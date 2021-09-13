@@ -3,14 +3,17 @@ package movieticketsystem.service;
 public class Screening {
 
     String date,movieName;
-    int mid, rnumber;
+    int movieId;
+    int roomNumber;
+    int attendance;
 
-    public Screening(String movieName,String date, int mid, int rnumber) {
+    public Screening(String movieName,String date,  int roomNumber, int attendance) {
         this.movieName = movieName;
         this.date = date;
-        this.mid = mid;
-        this.rnumber = rnumber;
+        this.roomNumber = roomNumber;
+        this.attendance = attendance;
     }
+
 
     public String getDate() {
         return date;
@@ -28,21 +31,27 @@ public class Screening {
         this.movieName = movieName;
     }
 
-    public int getMid() {
-        return mid;
+    public int getMovieId() {
+        return movieId;
     }
 
-    public void setMid(int mid) {
-        this.mid = mid;
+    public void setMovieId(int movieId) {
+        this.movieId = movieId;
     }
 
-    public int getRnumber() {
-        return rnumber;
+    public int getRoomNumber() {
+        return roomNumber;
     }
 
-    public void setRnumber(int rnumber) {
-        this.rnumber = rnumber;
+    public void setRoomNumber(int roomNumber) {
+        this.roomNumber = roomNumber;
     }
 
+    public int getAttendance() {
+        return attendance;
+    }
 
+    public void setAttendance(int attendance) {
+        this.attendance = attendance;
+    }
 }

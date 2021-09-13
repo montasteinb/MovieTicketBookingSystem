@@ -1,5 +1,7 @@
 package movieticketsystem.service;
 
+import java.sql.Date;
+
 public class Booking {
 
     private String movieName, date;

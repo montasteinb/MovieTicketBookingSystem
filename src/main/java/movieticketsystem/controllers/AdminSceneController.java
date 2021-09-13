@@ -2,13 +2,8 @@ package movieticketsystem.controllers;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Date;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
+import java.sql.*;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 import javafx.collections.FXCollections;
@@ -24,22 +19,24 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
-import movieticketsystem.Main;
 import movieticketsystem.models.Movie;
 import movieticketsystem.models.User;
 import movieticketsystem.repository.DBHandler;
 import movieticketsystem.service.Screening;
 
-public class AdminSceneController implements Initializable {
+import static movieticketsystem.Main.user;
+
+public class AdminSceneController extends LoginSceneController implements Initializable {
 
     @FXML
     private TableView<Movie> movieTable;
     @FXML
     private TableColumn<Movie,String> colMoviesName;
+    @FXML
+    private TableColumn<Movie, Integer> colMoviesId;
     @FXML
     private TableColumn<Movie,String> colMoviesGenre;
     @FXML
@@ -82,24 +79,20 @@ public class AdminSceneController implements Initializable {
     private TableColumn<User,String> colUserLastName;
     @FXML
     private TableColumn<User,Boolean> colUserIsAdmin;
-    @FXML
-    private TextArea logsTextArea;
-    @FXML
-    private ComboBox<String> logsSelectTableComboBox;
 
-    private final DateTimeFormatter formatter =  DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
+    private static Connection connection = DBHandler.getConnection();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
         colMoviesName.setCellValueFactory(new PropertyValueFactory<Movie,String>("name"));
         colMoviesGenre.setCellValueFactory(new PropertyValueFactory<Movie,String>("genre"));
+        colMoviesId.setCellValueFactory(new PropertyValueFactory<Movie, Integer>("id"));
 
         colScreeningMovie.setCellValueFactory(new PropertyValueFactory<Screening,String>("movieName"));
         colScreeningDate.setCellValueFactory(new PropertyValueFactory<Screening,String>("date"));
-        colScreeningRoom.setCellValueFactory(new PropertyValueFactory<Screening,Integer>("mid"));
-        colScreeningAttendance.setCellValueFactory(new PropertyValueFactory<Screening,Integer>("rnumber"));
+        colScreeningRoom.setCellValueFactory(new PropertyValueFactory<Screening,Integer>("roomNumber"));
+        colScreeningAttendance.setCellValueFactory(new PropertyValueFactory<Screening,Integer>("attendance"));
 
         colUserUsername.setCellValueFactory(new PropertyValueFactory<User,String>("username"));
         colUserName.setCellValueFactory(new PropertyValueFactory<User,String>("firstName"));
@@ -114,16 +107,20 @@ public class AdminSceneController implements Initializable {
         addMoviesToComboBox();
         addRoomsToComboBox();
         addAllUsersToTable();
-        addAllDBTablesToComboBox();
+
     }
 
 
     public void addAllMoviesToTable() {
 
         try {
+            String query = "SELECT * FROM movies";
+            PreparedStatement statement = connection.prepareStatement(query);
 
-            ResultSet queryResultSet = DBHandler.statement.executeQuery("SELECT * FROM movies");
-            movieTable.setItems(resultSetToMovieList(queryResultSet));
+            ResultSet result = statement.executeQuery();
+            movieTable.setItems(resultSetToMovieList(result));
+
+
 
         } catch (SQLException e) {
 
@@ -132,40 +129,11 @@ public class AdminSceneController implements Initializable {
         }
     }
 
-    public void searchMovies() {
-
-        String genreFilter = movieGenreComboBox.getSelectionModel().getSelectedItem();
-        String nameFilter = movieSearchField.getText();
-
-        String sqlQuery = "SELECT * FROM movies WHERE ";
-
-        try {
-
-            if ( ( genreFilter.isEmpty() || genreFilter.equals("All") ) && nameFilter.isEmpty() ){
-                addAllMoviesToTable();
-                return;
-            }
-            else if ( genreFilter.isEmpty() || genreFilter.equals("All") )
-                sqlQuery += "name LIKE '%"+nameFilter+"%' ;";
-            else if ( nameFilter.isEmpty())
-                sqlQuery += "genre='"+genreFilter+"' ;";
-            else
-                sqlQuery += "genre='"+genreFilter+"' AND name LIKE '%"+nameFilter+"%' ;";
-
-
-            ResultSet queryResult = DBHandler.statement.executeQuery(sqlQuery);
-
-            movieTable.setItems(resultSetToMovieList(queryResult));
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-            statusMessage.setText("Error with database!");
-        }
-    }
 
     private ObservableList<Movie> resultSetToMovieList(ResultSet rs) throws SQLException{
 
         ObservableList<Movie> movies = FXCollections.observableArrayList();
+
         int movieId;
         String movieName;
         String movieGenre;
@@ -179,37 +147,57 @@ public class AdminSceneController implements Initializable {
         return movies;
     }
 
-    public void addMovie() {
+    public void addMovie(Movie movie) throws SQLException {
 
-        int movieId;
+        int movieId = getNewMovieId();
         String movieName = newMovieNameField.getText();
         String movieGenre = newMovieGenreComboBox.getSelectionModel().getSelectedItem();
 
-        if(movieName.isEmpty() || movieGenre.isEmpty()){
+        if (movieName.isEmpty() || movieGenre.isEmpty()) {
             statusMessage.setText("Fields should not be empty!");
             return;
+        }try{
+            connection = DBHandler.getConnection();
+
+
+            String query = "INSERT INTO movies (id, name, genre) VALUES ( '" + movieId + "', '" + movieName + "', '" + movieGenre + "' );";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+                statement.executeUpdate();
+                addAllMoviesToTable();
+
+            } catch (SQLException sqlException) {
+                sqlException.printStackTrace();
+                statusMessage.setText("The movie has been added!");
+            }
         }
 
-        try{
-            movieId = getNewMovieId();
-            DBHandler.statement.execute("insert into movies values( '"+movieId+"', '"+movieName+"', '"+movieGenre+"' );");
-            statusMessage.setText("The movie has been added!");
-        }
-        catch(SQLException e){
+    @FXML
+    private void handleAddMovie(ActionEvent actionEvent){
+
+        try {
+            Movie movie = new Movie(newMovieNameField.getText(), newMovieGenreComboBox.getSelectionModel().getSelectedItem());
+            addMovie(movie);
+
+        } catch (Exception e) {
             e.printStackTrace();
-            statusMessage.setText("Error with database!");
         }
     }
+
 
     public void deleteMovie() {
 
-        Movie selectedMovie = movieTable.getSelectionModel().getSelectedItem();
-        int movieId = selectedMovie.getId();
+        int movieId = movieTable.getSelectionModel().getSelectedItem().getId();
 
-        try {
-            DBHandler.statement.execute("delete from movies where id="+movieId);
-            movieTable.getItems().remove(selectedMovie);
+        connection = DBHandler.getConnection();
+        try{
+            String query = "DELETE FROM movies WHERE id = " + movieId + ";";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.executeUpdate();
+
             statusMessage.setText("The movie was deleted");
+            addAllMoviesToTable();
         }
         catch(SQLException e){
             e.printStackTrace();
@@ -217,8 +205,12 @@ public class AdminSceneController implements Initializable {
         }
     }
 
+
     private int getNewMovieId() throws SQLException{
-        ResultSet rs = DBHandler.statement.executeQuery("SELECT MAX(id) as id FROM movies");
+        connection = DBHandler.getConnection();
+        String query = "SELECT MAX(id) AS id FROM movies;";
+        PreparedStatement statement = connection.prepareStatement(query);
+        ResultSet rs = statement.executeQuery(query);
         int id=0;
 
         while(rs.next())
@@ -227,12 +219,19 @@ public class AdminSceneController implements Initializable {
         return ++ id;
     }
 
+
+
     private void addAllScreeningsToTable(){
 
         try {
+            connection = DBHandler.getConnection();
+            String query = "SELECT movies.name as movieName, screenings.date as date, screenings.roomNo as roomNo, screenings.attendance as attendance FROM screenings " +
+                    "INNER JOIN movies ON movies.id = screenings.movie_id;";
+            PreparedStatement statement = connection.prepareStatement(query);
 
-            ResultSet queryResultSet = DBHandler.statement.executeQuery("SELECT m.name as moviename, s.sdate as date, s.rnumber as rnumber, s.attendance as attendance FROM screenings s join movies m on m.id=s.mid");
-            screeningTable.setItems(resultSetToScreeningList(queryResultSet));
+            ResultSet result = statement.executeQuery(query);
+
+            screeningTable.setItems(resultSetToScreeningList(result));
 
         } catch (SQLException e) {
 
@@ -250,73 +249,78 @@ public class AdminSceneController implements Initializable {
         int attendance;
 
         while(rs.next()){
-            movieName = rs.getString("moviename");
-            date = rs.getTimestamp("date").toLocalDateTime().format(formatter);
-            roomNumber = rs.getInt("rnumber");
-            attendance = rs.getInt("attendance");
-            screenings.add(new Screening(movieName,date, roomNumber, attendance));
+            movieName = rs.getString(1);
+            date = rs.getString(2);
+            roomNumber = rs.getInt(3);
+            attendance = rs.getInt(4);
+            screenings.add(new Screening(movieName, date, roomNumber, attendance));
         }
 
         return screenings;
     }
 
+
     public void deleteScreening() {
 
-        Screening selectedScreening = screeningTable.getSelectionModel().getSelectedItem();
-        int movieId = selectedScreening.getMid();
-        String stringSdate = selectedScreening.getDate();
 
-        Timestamp sdate = formattedDateToTimestamp(stringSdate);
+        Screening selectedScreening = screeningTable.getSelectionModel().getSelectedItem();
+        String date = screeningTable.getSelectionModel().getSelectedItem().getDate();
+        int movieId = screeningTable.getSelectionModel().getSelectedItem().getMovieId();
 
         try {
-            System.out.println("delete from screenings where mid="+movieId+"' and sdate='"+sdate+"' ;");
-            DBHandler.statement.execute("delete from screenings where mid="+movieId+" and sdate='"+sdate+"' ;");
-            screeningTable.getItems().remove(selectedScreening);
+            System.out.println("Delete from screenings where movie is " + selectedScreening.getMovieName() + " and date is " + selectedScreening.getDate());
+            connection = DBHandler.getConnection();
+            String query = "DELETE FROM screenings WHERE movie_id = " + movieId + " AND date = '" + date + "';";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.executeUpdate(query);
             statusMessage.setText("The view has been deleted");
-        }
-        catch(SQLException e){
+
+
+        } catch (SQLException e) {
             e.printStackTrace();
             statusMessage.setText("Error with database!");
         }
     }
 
-    private Timestamp formattedDateToTimestamp(String date){
-        SimpleDateFormat format = new SimpleDateFormat("The dd/MM/yyyy HH:mm");
-        Date parsedDate = null;
-        try{
-            parsedDate = (Date) format.parse(date);
-        }
-        catch(ParseException e){
 
-        }
-        return new Timestamp(parsedDate.getTime());
+    public int findMovieId() throws SQLException {
+        connection = DBHandler.getConnection();
+        String movieName = newScreeningMoviesComboBox.getSelectionModel().getSelectedItem();
+        String query = "SELECT id FROM movies WHERE name = '" + movieName + "'";
+        PreparedStatement statement = connection.prepareStatement(query);
+        ResultSet movieResultSet = statement.executeQuery();
+        movieResultSet.next();
+        int movieId = movieResultSet.getInt("id");
+
+        return movieId;
     }
 
-    public void addScreening(){
 
+    public void addScreening(){
         try {
 
             String movieName = newScreeningMoviesComboBox.getSelectionModel().getSelectedItem();
-            String dateString = newScreeningDateField.getText();
+            String date = newScreeningDateField.getText();
             int roomNumber = newScreeningRoomComboBox.getSelectionModel().getSelectedItem();
+            int movieId =  findMovieId();
 
-            if(movieName.isEmpty() || dateString.isEmpty() || roomNumber<1)
+            if(movieName.isEmpty() || date.isEmpty() || roomNumber < 0) {
                 statusMessage.setText("Fields must not be empty!");
+            }
 
-            Timestamp sdate = parseDate(dateString);
-
-            ResultSet movieResultSet = DBHandler.statement.executeQuery("select id from movies where name='"+movieName+"' ;");
-            movieResultSet.next();
-            int movieId = movieResultSet.getInt("id");
-
-
-            if (screeningExists(sdate, roomNumber)){
+            if (screeningExists(date, roomNumber)){
                 statusMessage.setText("There is already a screening at this time and room!");
                 return;
             }
+            connection = DBHandler.getConnection();
 
-            DBHandler.statement.execute("insert into screenings values ('"+sdate+"', "+movieId+", "+roomNumber+", 0);");
+            String query = "INSERT INTO screenings (date, movie_id, roomNo) VALUES('" + date + "', '" + movieId + "', '" + roomNumber + "');";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.executeUpdate();
             statusMessage.setText("Successful introduction!");
+
+            addAllScreeningsToTable();
         }
         catch(SQLException e){
             e.printStackTrace();
@@ -326,8 +330,12 @@ public class AdminSceneController implements Initializable {
     private void addMoviesToComboBox(){
 
         try{
-            ResultSet queryResultSet = DBHandler.statement.executeQuery("SELECT * FROM movies");
-            ObservableList<Movie> movies = resultSetToMovieList(queryResultSet);
+            connection = DBHandler.getConnection();
+            String query = "SELECT * FROM movies";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            ResultSet result = statement.executeQuery(query);
+            ObservableList<Movie> movies = resultSetToMovieList(result);
 
 
             for(Movie m: movies)
@@ -342,13 +350,16 @@ public class AdminSceneController implements Initializable {
     private void addRoomsToComboBox() {
 
         try{
+            connection = DBHandler.getConnection();
+            String query = "SELECT number FROM rooms";
+            PreparedStatement statement = connection.prepareStatement(query);
 
-            ResultSet queryResultSet = DBHandler.statement.executeQuery("SELECT id FROM rooms");
+            ResultSet result = statement.executeQuery(query);
 
             ObservableList<Integer> rooms = FXCollections.observableArrayList();
 
-            while(queryResultSet.next())
-                rooms.add(queryResultSet.getInt("id"));
+            while(result.next())
+                rooms.add(result.getInt("number"));
 
             newScreeningRoomComboBox.getItems().addAll(rooms);
         }
@@ -358,23 +369,14 @@ public class AdminSceneController implements Initializable {
         }
     }
 
-    private Timestamp parseDate(String date) {
-        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-        Date parsedDate = null;
-        try{
-            parsedDate = (Date) format.parse(date);
-        }
-        catch(ParseException e){
-            e.printStackTrace();
-            statusMessage.setText("The date is in the wrong format!");
-        }
 
-        return new Timestamp(parsedDate.getTime());
-    }
+    private boolean screeningExists(String date, int room) throws SQLException{
+        date = newScreeningDateField.getText();
+        connection = DBHandler.getConnection();
+        String query = "SELECT * FROM screenings WHERE date ='" + date + "' and roomNo= '" + room + "';";
+        PreparedStatement statement = connection.prepareStatement(query);
 
-    private boolean screeningExists(Timestamp sdate, int room) throws SQLException{
-
-        ResultSet rs = DBHandler.statement.executeQuery("select * from screenings where sdate='"+sdate+"' and rnumber="+room);
+        ResultSet rs = statement.executeQuery(query);
 
         return rs.next();
     }
@@ -382,8 +384,12 @@ public class AdminSceneController implements Initializable {
     private void addAllUsersToTable() {
 
         try{
-            ResultSet queryResultSet = DBHandler.statement.executeQuery("select * from users");
-            usersTable.getItems().addAll(resultSetToUserList(queryResultSet));
+            connection = DBHandler.getConnection();
+            String query = "SELECT * FROM users";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            ResultSet result = statement.executeQuery(query);
+            usersTable.getItems().addAll(resultSetToUserList(result));
         }
         catch(SQLException e){
             e.printStackTrace();
@@ -393,18 +399,22 @@ public class AdminSceneController implements Initializable {
     private ObservableList<User> resultSetToUserList(ResultSet rs) {
 
         ObservableList<User> users = FXCollections.observableArrayList();
+
         String username = "";
         String firstName = "";
         String lastName = "";
         boolean isAdmin = false;
+        String password = "";
 
         try{
             while(rs.next()){
+
                 username = rs.getString("username");
                 firstName = rs.getString("firstName");
                 lastName = rs.getString("lastName");
                 isAdmin = rs.getBoolean("isAdmin");
-                users.add(new User(username,firstName,lastName,isAdmin));
+                password = rs.getString("password");
+                users.add(new User(username,firstName,lastName,isAdmin, password));
             }
         }
         catch(SQLException e){
@@ -426,7 +436,11 @@ public class AdminSceneController implements Initializable {
             return;
         }
         try {
-            DBHandler.statement.executeUpdate("UPDATE users set isAdmin=true where username='"+selectedUser.getUsername()+"' ;");
+            connection = DBHandler.getConnection();
+            String query = "UPDATE users SET isAdmin = true WHERE username ='" + selectedUser.getUsername() + "' ;";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.executeUpdate(query);
+
             statusMessage.setText("Success!");
             refreshUsersTable();
         }
@@ -446,7 +460,10 @@ public class AdminSceneController implements Initializable {
         }
 
         try {
-            DBHandler.statement.execute("DELETE from users where username='"+selectedUser.getUsername()+"' ;");
+            connection = DBHandler.getConnection();
+            String query = "DELETE FROM users WHERE username = '" + selectedUser.getUsername() + "';";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.executeUpdate();
             statusMessage.setText("Success!");
             refreshUsersTable();
         }
@@ -461,192 +478,41 @@ public class AdminSceneController implements Initializable {
         usersTable.getItems().setAll();
         addAllUsersToTable();
     }
+    public void searchMovies() {
 
-    private void addAllDBTablesToComboBox(){
+        String genreFilter = movieGenreComboBox.getSelectionModel().getSelectedItem();
+        String nameFilter = movieSearchField.getText();
 
-        logsSelectTableComboBox.getItems().addAll("movies","rooms","screenings","bookings","users");
-    }
+        try {
+            String query = "SELECT * FROM movies WHERE ";
+            PreparedStatement statement = connection.prepareStatement(query);
 
-    public void showLogs() {
+            if ((genreFilter.isEmpty() || genreFilter.equals("All")) && nameFilter.isEmpty()){
+                addAllMoviesToTable();
+                return;
+            }
+            else if ( genreFilter.isEmpty() || genreFilter.equals("All") )
+                query += "name LIKE '%"+nameFilter+"%';";
+            else if ( nameFilter.isEmpty())
+                query += " genre = '"+genreFilter+"';";
+            else {
+                query += "genre='" + genreFilter + "' AND name LIKE '%" + nameFilter + "%';";
+            }
 
-        String selectedTable = logsSelectTableComboBox.getSelectionModel().getSelectedItem();
-
-        if (selectedTable.isEmpty()){
-            statusMessage.setText("There is no selected table!");
-            return;
+            ResultSet result = statement.executeQuery(query);
+            movieTable.setItems(resultSetToMovieList(result));
         }
-
-        try{
-            logsTextArea.setText(getLogs(selectedTable));
-        }
-        catch(SQLException e){
-            statusMessage.setText("Database problem");
+        catch (SQLException e){
             e.printStackTrace();
-            return;
+            statusMessage.setText("Error with database!");
         }
-    }
-
-    private String getLogs(String selectedTable) throws SQLException{
-
-        String log ="";
-
-
-        ResultSet queryResultSet = DBHandler.statement.executeQuery("select * from "+selectedTable+"_log_file;");
-
-
-        if(!queryResultSet.next()){
-            statusMessage.setText("There are no logs!");
-            return "";
-        }
-
-        switch(selectedTable){
-            case "movies":
-                log = resultSetMoviesToLog(queryResultSet);
-                break;
-            case "rooms":
-                log = resultSetRoomsToLog(queryResultSet);
-                break;
-            case "screenings":
-                log = resultSetScreeningsToLog(queryResultSet);
-                break;
-            case "bookings":
-                log = resultSetBookingsToLog(queryResultSet);
-                break;
-            case "users":
-                log = resultSetUsersToLog(queryResultSet);
-                break;
-        }
-        return log;
-    }
-
-    private String resultSetMoviesToLog(ResultSet rs) throws SQLException{
-
-        String log = "";
-
-        String operation = "";
-        String oper_time = "";
-        int id = 0;
-        String name = "";
-        String genre = "";
-
-        do{
-            operation = rs.getString("operation");
-            oper_time = rs.getTimestamp("oper_time").toLocalDateTime().toString();
-            id = rs.getInt("id");
-            name = rs.getString("name");
-            genre = rs.getString("genre");
-
-            log += operation+"  "+oper_time+"  "+id+"  "+name+"  "+genre+"  \n";
-        }
-        while(rs.next());
-
-        return log;
-
-    }
-
-    private String resultSetRoomsToLog(ResultSet rs) throws SQLException{
-
-        String log = "";
-
-        String operation = "";
-        String oper_time = "";
-        int id = 0;
-        int capacity = 0;
-
-        do{
-            operation = rs.getString("operation");
-            oper_time = rs.getTimestamp("oper_time").toLocalDateTime().toString();
-            id = rs.getInt("id");
-            capacity = rs.getInt("capacity");
-
-            log += operation+"  "+oper_time+"  "+id+"  "+capacity+"  \n";
-        }
-        while(rs.next());
-
-        return log;
-    }
-
-    private String resultSetScreeningsToLog(ResultSet rs) throws SQLException{
-
-        String log = "";
-
-        String operation = "";
-        String oper_time = "";
-        String sdate = "";
-        int mid = 0;
-        int rnumber = 0;
-        int attendance = 0;
-
-        do{
-            operation = rs.getString("operation");
-            oper_time = rs.getTimestamp("oper_time").toLocalDateTime().toString();
-            sdate = rs.getTimestamp("sdate").toLocalDateTime().toString();
-            mid = rs.getInt("mid");
-            rnumber = rs.getInt("rnumber");
-            attendance = rs.getInt("attendance");
-
-            log += operation+"  "+oper_time+"  "+sdate+"  "+mid+"  "+rnumber+"  "+attendance+"  \n";
-        }
-        while(rs.next());
-
-        return log;
-    }
-
-    private String resultSetBookingsToLog(ResultSet rs) throws SQLException{
-
-        String log = "";
-
-        String operation = "";
-        String oper_time = "";
-        String username = "";
-        String sdate = "";
-        int mid = 0;
-
-        do{
-            operation = rs.getString("operation");
-            oper_time = rs.getTimestamp("oper_time").toLocalDateTime().toString();
-            username = rs.getString("username");
-            sdate = rs.getTimestamp("sdate").toLocalDateTime().toString();
-            mid = rs.getInt("mid");
-
-            log += operation+"  "+oper_time+"  "+username+" "+sdate+"  "+mid+"  \n";
-        }
-        while(rs.next());
-
-        return log;
-    }
-
-    private String resultSetUsersToLog(ResultSet rs) throws SQLException{
-
-        String log = "";
-
-        String operation = "";
-        String oper_time = "";
-        String username = "";
-        String firstName = "";
-        String lastName = "";
-        boolean isAdmin = false;
-
-        do{
-            operation = rs.getString("operation");
-            oper_time = rs.getTimestamp("oper_time").toLocalDateTime().toString();
-            username = rs.getString("username");
-            firstName = rs.getString("firstName");
-            lastName = rs.getString("lastName");
-            isAdmin = rs.getBoolean("isAdmin");
-
-            log += operation+"  "+oper_time+"  "+username+" "+firstName+"  "+lastName+" "+isAdmin+"  \n";
-        }
-        while(rs.next());
-
-        return log;
     }
 
     public void signOut(ActionEvent event) {
 
         try{
-            Scene loginScene = new Scene (FXMLLoader.load(getClass().getResource("loginScene.fxml")));
-            Main.user = null;
+            Scene loginScene = new Scene (FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/movieticketsystem/loginScene.fxml"))));
+            user = null;
             Stage window = (Stage)((Node)event.getSource()).getScene().getWindow();
             window.setScene(loginScene);
             window.setResizable(false);

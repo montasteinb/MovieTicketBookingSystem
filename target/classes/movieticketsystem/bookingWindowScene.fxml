@@ -8,7 +8,9 @@
 <?import javafx.scene.paint.*?>
 <?import javafx.scene.text.*?>
 
-<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="294.0" prefWidth="600.0" styleClass="backgroundimage" stylesheets="@style.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="movieticketsystem.controllers.BookingWindowSceneController">
+<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="294.0" prefWidth="600.0"
+            styleClass="backgrimage" stylesheets="@style.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="movieticketsystem.controllers.BookingWindowSceneController" style="-fx-background-color:#3e5360 ">
     <children>
         <ComboBox fx:id="dateComboBox" layoutX="226.0" layoutY="89.0" prefWidth="329.0" promptText="Available dates">
             <items>
@@ -26,7 +28,7 @@
             </font>
         </Label>
         <Button fx:id="cancelButton" layoutX="324.0" layoutY="223.0" mnemonicParsing="false" onAction="#cancel" prefHeight="45.0" prefWidth="116.0" text="Cancellation" />
-        <Button id="cancelButton" layoutX="456.0" layoutY="223.0" mnemonicParsing="false" onAction="#confirmBooking" prefHeight="45.0" prefWidth="116.0" text="Confirmation" />
+        <Button id="cancelButton" layoutX="456.0" layoutY="223.0" mnemonicParsing="false" onAction="#confirmBooking" prefHeight="45.0" prefWidth="116.0" text="Confirmation"/>
         <Label fx:id="statusMessage" font="$x1" layoutX="40.0" layoutY="235.0" prefHeight="22.0" prefWidth="239.0" text="" />
     </children>
 </AnchorPane>
