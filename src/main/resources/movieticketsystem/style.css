@@ -96,7 +96,7 @@
 .text-area .content{
       -fx-background-color: #324044;
       -fx-text-fill: white;
-  }
+}
 
 .check-box .box {
 
@@ -116,7 +116,9 @@
 
 -fx-background-color: #3ca6a8;
 }
-
-.backgroundimage{
-    -fx-background-image: url("https://wallpapercave.com/wp/p4iaEa4.jpg")
+.anchor {
 }
+
+/**.backgrimage {
+    -fx-background-image: url("https://wallpapercave.com/wp/p4iaEa4.jpg")
+}**/

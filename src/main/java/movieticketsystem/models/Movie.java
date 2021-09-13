@@ -13,6 +13,16 @@ public class Movie {
         this.genre = new SimpleStringProperty(genre);
     }
 
+    public  Movie (){
+
+    }
+    public Movie(String name, String selectedItem) {
+    }
+
+    public Movie(int movieId, String movieName, String movieGenre, int roomNumber) {
+
+    }
+
     public int getId() {
         return id;
     }

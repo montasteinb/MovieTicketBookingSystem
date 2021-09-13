@@ -7,38 +7,30 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 
 public class DBHandler {
 
-    public static PreparedStatement statement;
-    private static String pass;
-    private static String user;
-    private static String connectionUrl;
     private static Connection connection;
-    //public static Statement statement;
+
+    private static PropertiesConfiguration databaseProperties = new PropertiesConfiguration();
 
     private DBHandler() {
-        getSetDatabaseInfo();
-    }
 
-    private static void getSetDatabaseInfo() {
-        PropertiesConfiguration databaseProperties = new PropertiesConfiguration();
+    }
+    public static Connection getConnection() {
+
         try {
             databaseProperties.load("database.properties");
         } catch (ConfigurationException e) {
             e.printStackTrace();
         }
 
+        String pass = databaseProperties.getString("database.password");
+        String user = databaseProperties.getString("database.user");
         String host = databaseProperties.getString("database.host");
         String port = databaseProperties.getString("database.port");
         String dbName = databaseProperties.getString("database.name");
+        String connectionUrl = host + ":" + port + "/" + dbName + "?serverTimezone=GMT%2B3";
 
-        pass = databaseProperties.getString("database.password");
-        user = databaseProperties.getString("database.user");
-        connectionUrl = host + ":" + port + "/" + dbName + "?serverTimezone=GMT%2B3";
-    }
-
-    public static Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
-                getSetDatabaseInfo();
                 connection = DriverManager.getConnection(connectionUrl, user, pass);
             }
         } catch (SQLException ex) {
