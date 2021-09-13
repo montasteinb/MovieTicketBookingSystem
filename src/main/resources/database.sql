@@ -15,9 +15,7 @@ create table if not exists movies(
     id int not null auto_increment,
     name varchar(50) not null,
     genre varchar(50) not null,
-    roomNo int,
-    primary key(id),
-    foreign key(roomNo) references rooms(number)
+    primary key(id)
     );
 
 create table if not exists users(
@@ -55,7 +53,7 @@ create table if not exists bookings(
 
 update screenings set attendance = 0 where id;
 
-INSERT INTO `moviebooking`.`rooms` (`number`) VALUES ('1');
-INSERT INTO `moviebooking`.`rooms` (`number`) VALUES ('2');
-INSERT INTO `moviebooking`.`rooms` (`number`) VALUES ('3');
-INSERT INTO `moviebooking`.`rooms` (`number`) VALUES ('4');
+INSERT INTO `moviebooking`.`rooms` (`number`, `capacity`) VALUES ('1', '10');
+INSERT INTO `moviebooking`.`rooms` (`number`, `capacity`) VALUES ('2', '15');
+INSERT INTO `moviebooking`.`rooms` (`number`, `capacity`) VALUES ('3', '20');
+INSERT INTO `moviebooking`.`rooms` (`number`, `capacity`) VALUES ('4', '30');
